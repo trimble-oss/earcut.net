@@ -12,7 +12,7 @@ namespace EarcutNet
             var outerNode = LinkedList(data, 0, outerLen, true);
             var triangles = new List<int>();
 
-            if (outerNode == null)
+            if (outerNode == null || outerNode.next == outerNode.prev)
             {
                 return triangles;
             }
@@ -191,7 +191,7 @@ namespace EarcutNet
                     }
                     else if (pass == 1)
                     {
-                        ear = CureLocalIntersections(ear, triangles);
+                        ear = CureLocalIntersections(FilterPoints(ear), triangles);
                         EarcutLinked(ear, triangles, minX, minY, invSize, 2);
 
                         // as a last resort, try splitting the remaining polygon into two
@@ -218,12 +218,20 @@ namespace EarcutNet
                 return false; // reflex, can't be an ear
             }
 
-            // now make sure we don't have other points inside the potential ear
-            var p = ear.next.next;
+            // now make sure we don't have other points inside the potential ear   
+            double ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
 
-            while (p != ear.prev)
+            // triangle bbox; min & max are calculated like this for speed
+            var x0 = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx);
+            var y0 = ay < by ? (ay < cy ? ay : cy) : (by < cy ? by : cy);
+            var x1 = ax > bx ? (ax > cx ? ax : cx) : (bx > cx ? bx : cx);
+            var y1 = ay > by ? (ay > cy ? ay : cy) : (by > cy ? by : cy);
+            var p = c.next;
+
+            while (p != a)
             {
-                if (PointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+                if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 &&
+                    PointInTriangle(ax, ay, bx, by, cx, cy, p.x, p.y) &&
                     Area(p.prev, p, p.next) >= 0)
                 {
                     return false;
@@ -246,15 +254,17 @@ namespace EarcutNet
                 return false; // reflex, can't be an ear
             }
 
+            double ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+
             // triangle bbox; min & max are calculated like this for speed
-            var minTX = a.x < b.x ? (a.x < c.x ? a.x : c.x) : (b.x < c.x ? b.x : c.x);
-            var minTY = a.y < b.y ? (a.y < c.y ? a.y : c.y) : (b.y < c.y ? b.y : c.y);
-            var maxTX = a.x > b.x ? (a.x > c.x ? a.x : c.x) : (b.x > c.x ? b.x : c.x);
-            var maxTY = a.y > b.y ? (a.y > c.y ? a.y : c.y) : (b.y > c.y ? b.y : c.y);
+            var x0 = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx);
+            var y0 = ay < by ? (ay < cy ? ay : cy) : (by < cy ? by : cy);
+            var x1 = ax > bx ? (ax > cx ? ax : cx) : (bx > cx ? bx : cx);
+            var y1 = ay > by ? (ay > cy ? ay : cy) : (by > cy ? by : cy);
 
             // z-order range for the current triangle bbox;
-            var minZ = ZOrder(minTX, minTY, minX, minY, invSize);
-            var maxZ = ZOrder(maxTX, maxTY, minX, minY, invSize);
+            var minZ = ZOrder(x0, y0, minX, minY, invSize);
+            var maxZ = ZOrder(x1, y1, minX, minY, invSize);
 
             var p = ear.prevZ;
             var n = ear.nextZ;
@@ -262,18 +272,16 @@ namespace EarcutNet
             // look for points inside the triangle in both directions
             while (p != null && p.z >= minZ && n != null && n.z <= maxZ)
             {
-                if (p != ear.prev && p != ear.next &&
-                    PointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
-                    Area(p.prev, p, p.next) >= 0)
+                if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p != a && p != c &&
+                    PointInTriangle(ax, ay, bx, by, cx, cy, p.x, p.y) && Area(p.prev, p, p.next) >= 0)
                 {
                     return false;
                 }
 
                 p = p.prevZ;
 
-                if (n != ear.prev && n != ear.next &&
-                    PointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
-                    Area(n.prev, n, n.next) >= 0)
+                if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n != a && n != c &&
+                    PointInTriangle(ax, ay, bx, by, cx, cy, n.x, n.y) && Area(n.prev, n, n.next) >= 0)
                 {
                     return false;
                 }
@@ -284,9 +292,8 @@ namespace EarcutNet
             // look for remaining points in decreasing z-order
             while (p != null && p.z >= minZ)
             {
-                if (p != ear.prev && p != ear.next &&
-                    PointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
-                    Area(p.prev, p, p.next) >= 0)
+                if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p != a && p != c &&
+                    PointInTriangle(ax, ay, bx, by, cx, cy, p.x, p.y) && Area(p.prev, p, p.next) >= 0)
                 {
                     return false;
                 }
@@ -297,9 +304,8 @@ namespace EarcutNet
             // look for remaining points in increasing z-order
             while (n != null && n.z <= maxZ)
             {
-                if (n != ear.prev && n != ear.next &&
-                    PointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
-                    Area(n.prev, n, n.next) >= 0)
+                if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n != a && n != c &&
+                    PointInTriangle(ax, ay, bx, by, cx, cy, n.x, n.y) && Area(n.prev, n, n.next) >= 0)
                 {
                     return false;
                 }
@@ -335,7 +341,7 @@ namespace EarcutNet
                 p = p.next;
             } while (p != start);
 
-            return p;
+            return FilterPoints(p);
         }
 
         // try splitting polygon into two and triangulate them independently
@@ -393,8 +399,7 @@ namespace EarcutNet
             // process holes from left to right
             for (var i = 0; i < queue.Count; i++)
             {
-                EliminateHole(queue[i], outerNode);
-                outerNode = FilterPoints(outerNode, outerNode.next);
+                outerNode = EliminateHole(queue[i], outerNode);
             }
 
             return outerNode;
@@ -406,14 +411,20 @@ namespace EarcutNet
         }
 
         // find a bridge between vertices that connects hole with an outer ring and and link it
-        static void EliminateHole(Node hole, Node outerNode)
+        static Node EliminateHole(Node hole, Node outerNode)
         {
-            outerNode = FindHoleBridge(hole, outerNode);
-            if (outerNode != null)
+            var bridge = FindHoleBridge(hole, outerNode);
+            if (bridge == null)
             {
-                var b = SplitPolygon(outerNode, hole);
-                FilterPoints(b, b.next);
+                return outerNode;
             }
+
+            var bridgeReverse = SplitPolygon(bridge, hole);
+
+            // filter collinear points around the cuts
+            FilterPoints(bridgeReverse, bridgeReverse.next);
+
+            return FilterPoints(bridge, bridge.next);
         }
 
         // David Eberly's algorithm for finding a bridge between hole and outer polygon
@@ -435,19 +446,9 @@ namespace EarcutNet
                     if (x <= hx && x > qx)
                     {
                         qx = x;
-                        if (x == hx)
-                        {
-                            if (hy == p.y)
-                            {
-                                return p;
-                            }
-
-                            if (hy == p.next.y)
-                            {
-                                return p.next;
-                            }
-                        }
                         m = p.x < p.next.x ? p : p.next;
+                        if (x == hx) 
+                            return m; // hole touches outer segment; pick leftmost endpoint
                     }
                 }
                 p = p.next;
@@ -456,11 +457,6 @@ namespace EarcutNet
             if (m == null)
             {
                 return null;
-            }
-
-            if (hx == qx)
-            {
-                return m.prev; // hole touches outer segment; pick lower endpoint
             }
 
             // look for points inside the triangle of hole point, segment intersection and endpoint;
@@ -473,16 +469,17 @@ namespace EarcutNet
             var tanMin = double.PositiveInfinity;
             double tan;
 
-            p = m.next;
+            p = m;
 
-            while (p != stop)
+            do
             {
                 if (hx >= p.x && p.x >= mx && hx != p.x && PointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y))
                 {
 
                     tan = Math.Abs(hy - p.y) / (hx - p.x); // tangential
 
-                    if ((tan < tanMin || (tan == tanMin && p.x > m.x)) && LocallyInside(p, hole))
+                    if (LocallyInside(p, hole) &&
+                        (tan < tanMin || (tan == tanMin && (p.x > m.x || (p.x == m.x && SectorContainsSector(m, p))))))
                     {
                         m = p;
                         tanMin = tan;
@@ -490,9 +487,17 @@ namespace EarcutNet
                 }
 
                 p = p.next;
-            }
+            } while (p != stop);
 
             return m;
+        }
+
+        /// <summary>
+        /// Whether sector in vertex m contains sector in vertex p in the same coordinates.
+        /// </summary>
+        static bool SectorContainsSector(Node m, Node p)
+        {
+            return Area(m.prev, m, p.prev) < 0 && Area(p.next, m, m.next) < 0;
         }
 
         // interlink polygon nodes in z-order
@@ -621,7 +626,7 @@ namespace EarcutNet
             Node leftmost = start;
             do
             {
-                if (p.x < leftmost.x)
+                if (p.x < leftmost.x || (p.x == leftmost.x && p.y < leftmost.y))
                 {
                     leftmost = p;
                 }
@@ -635,16 +640,18 @@ namespace EarcutNet
         // check if a point lies within a convex triangle
         static bool PointInTriangle(double ax, double ay, double bx, double by, double cx, double cy, double px, double py)
         {
-            return (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0 &&
-                   (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0 &&
-                   (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0;
+            return (cx - px) * (ay - py) >= (ax - px) * (cy - py) &&
+                   (ax - px) * (by - py) >= (bx - px) * (ay - py) &&
+                   (bx - px) * (cy - py) >= (cx - px) * (by - py);
         }
 
         // check if a diagonal between two polygon nodes is valid (lies in polygon interior)
         static bool IsValidDiagonal(Node a, Node b)
         {
-            return a.next.i != b.i && a.prev.i != b.i && !IntersectsPolygon(a, b) &&
-                   LocallyInside(a, b) && LocallyInside(b, a) && MiddleInside(a, b);
+            return a.next.i != b.i && a.prev.i != b.i && !IntersectsPolygon(a, b) && // dones't intersect other edges
+            (LocallyInside(a, b) && LocallyInside(b, a) && MiddleInside(a, b) && // locally visible
+            (Area(a.prev, a, b.prev) != 0.0 || Area(a, b.prev, b) != 0.0) || // does not create opposite-facing sectors
+            Equals(a, b) && Area(a.prev, a, a.next) > 0 && Area(b.prev, b, b.next) > 0); // special zero-length case
         }
 
         // signed area of a triangle
@@ -662,14 +669,30 @@ namespace EarcutNet
         // check if two segments intersect
         static bool Intersects(Node p1, Node q1, Node p2, Node q2)
         {
-            if ((Equals(p1, q1) && Equals(p2, q2)) ||
-                (Equals(p1, q2) && Equals(p2, q1)))
-            {
-                return true;
-            }
+            var o1 = Sign(Area(p1, q1, p2));
+            var o2 = Sign(Area(p1, q1, q2));
+            var o3 = Sign(Area(p2, q2, p1));
+            var o4 = Sign(Area(p2, q2, q1));
 
-            return Area(p1, q1, p2) > 0 != Area(p1, q1, q2) > 0 &&
-                   Area(p2, q2, p1) > 0 != Area(p2, q2, q1) > 0;
+            if (o1 != o2 && o3 != o4) return true; // general case
+
+            if (o1 == 0 && OnSegment(p1, p2, q1)) return true; // p1, q1 and p2 are collinear and p2 lies on p1q1
+            if (o2 == 0 && OnSegment(p1, q2, q1)) return true; // p1, q1 and q2 are collinear and q2 lies on p1q1
+            if (o3 == 0 && OnSegment(p2, p1, q2)) return true; // p2, q2 and p1 are collinear and p1 lies on p2q2
+            if (o4 == 0 && OnSegment(p2, q1, q2)) return true; // p2, q2 and q1 are collinear and q1 lies on p2q2
+
+            return false;
+        }
+
+        // for collinear points p, q, r, check if point q lies on segment pr
+        static bool OnSegment(Node p, Node q, Node r)
+        {
+            return q.x <= Math.Max(p.x, r.x) && q.x >= Math.Min(p.x, r.x) && q.y <= Math.Max(p.y, r.y) && q.y >= Math.Min(p.y, r.y);
+        }
+
+        static int Sign(double num)
+        {
+            return num > 0 ? 1 : num < 0 ? -1 : 0;
         }
 
         // check if a polygon diagonal intersects any polygon segments

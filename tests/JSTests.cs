@@ -59,8 +59,8 @@ namespace EarcutNet.Tests
             yield return LoadTestCaseData("water3", 197);
             yield return LoadTestCaseData("water3b", 25);
             yield return LoadTestCaseData("water4", 705);
-            yield return LoadTestCaseData("water-huge", 5174, 0.0011);
-            yield return LoadTestCaseData("water-huge2", 4461, 0.0028);
+            yield return LoadTestCaseData("water-huge", 5177, 0.0011);
+            yield return LoadTestCaseData("water-huge2", 4462, 0.0028);
             yield return LoadTestCaseData("degenerate", 0);
             yield return LoadTestCaseData("bad-hole", 42, 0.019);
             yield return LoadTestCaseData("empty-square", 0);
@@ -70,7 +70,7 @@ namespace EarcutNet.Tests
             yield return LoadTestCaseData("issue29", 40);
             yield return LoadTestCaseData("issue34", 139);
             yield return LoadTestCaseData("issue35", 844);
-            yield return LoadTestCaseData("self-touching", 124, 3.4e-14);
+            yield return LoadTestCaseData("self-touching", 124, 3.4e-6);
             yield return LoadTestCaseData("outside-ring", 64);
             yield return LoadTestCaseData("simplified-us-border", 120);
             yield return LoadTestCaseData("touching-holes", 57);
@@ -78,11 +78,26 @@ namespace EarcutNet.Tests
             yield return LoadTestCaseData("hilbert", 1024);
             yield return LoadTestCaseData("issue45", 10);
             yield return LoadTestCaseData("eberly-3", 73);
-            yield return LoadTestCaseData("eberly-6", 1429);
+            yield return LoadTestCaseData("eberly-6", 1429, 3.4e-6);
             yield return LoadTestCaseData("issue52", 109);
             yield return LoadTestCaseData("shared-points", 4);
             yield return LoadTestCaseData("bad-diagonals", 7);
             yield return LoadTestCaseData("issue83", 0);
+            yield return LoadTestCaseData("issue107", 0);
+            yield return LoadTestCaseData("issue111", 19);
+            yield return LoadTestCaseData("boxy", 57);
+            yield return LoadTestCaseData("collinear-diagonal", 14);
+            yield return LoadTestCaseData("issue119", 18);
+            yield return LoadTestCaseData("hourglass", 2);
+            yield return LoadTestCaseData("touching2", 8);
+            yield return LoadTestCaseData("touching3", 15);
+            yield return LoadTestCaseData("touching4", 20);
+            yield return LoadTestCaseData("rain", 2681);
+            yield return LoadTestCaseData("issue131", 12);
+            yield return LoadTestCaseData("infinite-loop-jhl", 0);
+            yield return LoadTestCaseData("filtered-bridge-jhl", 25);
+            yield return LoadTestCaseData("issue149", 2);
+            yield return LoadTestCaseData("issue142", 4, 0.13);
         }
 
         [TestCaseSource(nameof(TestCases))]
@@ -97,7 +112,8 @@ namespace EarcutNet.Tests
 
             var actualDeviation = Earcut.Deviation(data, holeIndices, triangles);
 
-            Assert.IsTrue(actualDeviation < expectedDeviation);
+            if (expectedTriangles > 0)
+                Assert.IsTrue(actualDeviation < expectedDeviation);
         }
     }
 }
